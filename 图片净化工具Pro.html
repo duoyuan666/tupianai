@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片净化工具 Pro</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0c0d12;--s1:#14161e;--s2:#1b1e28;--bd:#282c3c;
+    --t1:#e6e7ee;--t2:#888ca4;--t3:#555872;
+    --ac:#7c6cf0;--ac2:#a8a0ff;--ok:#3dd6a0;--warn:#f0a43c;--r:10px;
+  }
+  body{font-family:'Noto Sans SC',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh}
+  .app{max-width:960px;margin:0 auto;padding:28px 20px 60px}
+
+  header{text-align:center;margin-bottom:32px}
+  header h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
+  header h1 span{color:var(--ac2)}
+  header p{color:var(--t2);font-size:12px;margin-top:4px}
+
+  /* Drop zones */
+  .drop{border:2px dashed var(--bd);border-radius:var(--r);padding:44px 20px;text-align:center;cursor:pointer;background:var(--s1);transition:.2s}
+  .drop:hover,.drop.over{border-color:var(--ac);background:rgba(124,108,240,.04)}
+  .drop input{display:none}
+  .drop h3{font-size:15px;font-weight:500;margin-bottom:4px}
+  .drop span{font-size:12px;color:var(--t2)}
+
+  /* Pad zone */
+  .section-label{font-size:13px;font-weight:600;color:var(--t2);margin:24px 0 10px;display:flex;align-items:center;gap:8px}
+  .section-label .tag{font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(240,164,60,.12);color:var(--warn);font-weight:600}
+  .pad-zone{border:2px dashed var(--bd);border-radius:var(--r);padding:28px 20px;text-align:center;cursor:pointer;background:var(--s1);transition:.2s}
+  .pad-zone:hover,.pad-zone.over{border-color:var(--warn);background:rgba(240,164,60,.04)}
+  .pad-zone input{display:none}
+  .pad-zone h3{font-size:14px;font-weight:500;margin-bottom:4px}
+  .pad-zone span{font-size:11px;color:var(--t2)}
+
+  .pad-thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .pad-thumb{position:relative;width:80px;height:80px;border-radius:6px;overflow:hidden;border:1px solid var(--bd)}
+  .pad-thumb img{width:100%;height:100%;object-fit:cover}
+  .pad-thumb .pt-tag{position:absolute;bottom:0;left:0;right:0;background:rgba(240,164,60,.85);color:#fff;font-size:9px;font-weight:600;text-align:center;padding:1px 0}
+  .pad-thumb .pt-del{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;opacity:0;transition:.15s}
+  .pad-thumb:hover .pt-del{opacity:1}
+
+  /* Settings panel */
+  .settings{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);margin-top:20px;overflow:hidden}
+  .settings-header{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+  .settings-header h3{font-size:14px;font-weight:600}
+  .settings-header .arrow{color:var(--t3);font-size:12px;transition:.2s}
+  .settings-header .arrow.open{transform:rotate(180deg)}
+  .settings-body{display:none;padding:0 18px 18px;border-top:1px solid var(--bd)}
+  .settings-body.open{display:block}
+
+  .opt-group{margin-top:14px}
+  .opt-group-title{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600}
+  .opt-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;gap:12px}
+  .opt-row label{font-size:12px;color:var(--t2);flex:1}
+  .opt-row label strong{color:var(--t1);font-weight:500}
+
+  /* Toggle switch */
+  .toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+  .toggle input{opacity:0;width:0;height:0}
+  .toggle .slider{position:absolute;inset:0;background:var(--bd);border-radius:10px;cursor:pointer;transition:.2s}
+  .toggle .slider::before{content:'';position:absolute;left:3px;top:3px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s}
+  .toggle input:checked+.slider{background:var(--ac)}
+  .toggle input:checked+.slider::before{transform:translateX(16px)}
+
+  /* Slider */
+  .range-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .range-wrap input[type=range]{width:80px;accent-color:var(--ac)}
+  .range-wrap .rv{font-size:11px;color:var(--ac2);font-weight:600;min-width:28px;text-align:right}
+
+  /* Strength presets */
+  .presets{display:flex;gap:8px;margin-top:8px;margin-bottom:6px}
+  .preset{padding:6px 16px;border-radius:6px;border:1px solid var(--bd);background:var(--s2);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;transition:.15s}
+  .preset:hover{border-color:var(--ac);color:var(--t1)}
+  .preset.active{background:var(--ac);border-color:var(--ac);color:#fff}
+
+  /* Status bar */
+  .status{display:none;margin-top:20px;padding:14px 18px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);font-size:13px;color:var(--t2)}
+  .status.on{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .status .left{display:flex;align-items:center;gap:8px}
+  .status .spinner{width:16px;height:16px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status .prog{color:var(--ac2);font-weight:600}
+  .pbar-mini{width:100%;height:2px;background:var(--bd);border-radius:1px;margin-top:10px;overflow:hidden;display:none}
+  .pbar-mini.on{display:block}
+  .pbar-mini .fill{height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));transition:width .2s;width:0}
+
+  /* Batch actions */
+  .actions{display:none;margin-top:16px;gap:10px;flex-wrap:wrap}
+  .actions.on{display:flex}
+  .btn{padding:11px 22px;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+  .btn-ac{background:var(--ok);color:#fff}.btn-ac:hover{background:#2ec28e}
+  .btn-ac:disabled{opacity:.3;cursor:not-allowed}
+  .btn-s{background:var(--s2);color:var(--t1);border:1px solid var(--bd)}.btn-s:hover{background:var(--bd)}
+  .btn-p{background:var(--ac);color:#fff}.btn-p:hover{background:#6a5ad8}
+
+  /* Grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:20px}
+  .item{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;position:relative}
+  .item .img-wrap{padding:8px;display:flex;align-items:center;justify-content:center;min-height:160px;background:#0a0b10}
+  .item img{max-width:100%;max-height:220px;border-radius:5px;object-fit:contain}
+  .item .foot{padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;font-size:11px}
+  .item .fname{color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+  .item .dl{color:var(--ac2);cursor:pointer;font-weight:600;text-decoration:none;white-space:nowrap}
+  .item .dl:hover{text-decoration:underline}
+  .item .badge{position:absolute;top:8px;right:8px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
+  .badge-wait{background:rgba(136,140,164,.15);color:var(--t2)}
+  .badge-ing{background:rgba(124,108,240,.15);color:var(--ac2)}
+  .badge-done{background:rgba(61,214,160,.15);color:var(--ok)}
+  .badge-err{background:rgba(248,113,113,.15);color:#f87171}
+  .item .size-info{font-size:10px;color:var(--t3)}
+
+  .hint{text-align:center;font-size:11px;color:var(--t3);margin-top:28px}
+
+  .pipe-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;margin-left:4px;vertical-align:middle}
+  .pipe-tag.new{background:rgba(61,214,160,.15);color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🧹 图片净化 <span>Pro</span></h1>
+    <p>清除 AI 标记 · 支持批量处理 · 纯本地运行，图片不上传任何服务器</p>
+  </header>
+
+  <!-- AI image upload -->
+  <div class="drop" id="drop">
+    <h3>拖放图片到这里，或点击选择</h3>
+    <span>支持多选 · PNG / JPG / WebP · 单张最大 30MB</span>
+    <input type="file" id="fi" accept="image/png,image/jpeg,image/webp" multiple>
+  </div>
+
+  <!-- Pad image upload -->
+  <div class="section-label">实拍垫图 <span class="tag">可选</span></div>
+  <div class="pad-zone" id="padZone">
+    <h3>上传实拍照片作为垫图</h3>
+    <span>实拍图信号将以不可见的方式融合进 AI 图中，干扰平台检测</span>
+    <input type="file" id="padFi" accept="image/png,image/jpeg,image/webp" multiple>
+  </div>
+  <div class="pad-thumbs" id="padThumbs"></div>
+
+  <!-- Settings -->
+  <div class="settings">
+    <div class="settings-header" id="setHead">
+      <h3>⚙ 处理设置</h3>
+      <span class="arrow" id="setArrow">▼</span>
+    </div>
+    <div class="settings-body" id="setBody">
+      <!-- Presets -->
+      <div class="opt-group">
+        <div class="opt-group-title">处理强度</div>
+        <div class="presets" id="presets">
+          <div class="preset" data-p="light">轻度</div>
+          <div class="preset active" data-p="medium">中度（推荐）</div>
+          <div class="preset" data-p="heavy">重度</div>
+        </div>
+      </div>
+
+      <!-- Core options -->
+      <div class="opt-group">
+        <div class="opt-group-title">水印干扰</div>
+        <div class="opt-row">
+          <label><strong>LSB 随机化</strong> — 扰动像素最低位</label>
+          <div class="toggle"><input type="checkbox" id="o_lsb" checked><span class="slider"></span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>传感器噪声</strong> — 模拟相机噪点</label>
+          <div class="range-wrap"><input type="range" id="o_noise" min="0" max="6" step="0.5" value="3"><span class="rv" id="rv_noise">3</span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>DCT 块扰动</strong> — 破坏频域水印</label>
+          <div class="range-wrap"><input type="range" id="o_dct" min="0" max="5" step="0.5" value="2.5"><span class="rv" id="rv_dct">2.5</span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>高频能量注入</strong> — 干扰 SRM 检测</label>
+          <div class="range-wrap"><input type="range" id="o_hf" min="0" max="5" step="0.5" value="2.5"><span class="rv" id="rv_hf">2.5</span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>色像差模拟</strong> — 模拟镜头色散</label>
+          <div class="range-wrap"><input type="range" id="o_ca" min="0" max="3" step="0.2" value="1.2"><span class="rv" id="rv_ca">1.2</span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>微几何变换</strong> — 微旋转+缩放</label>
+          <div class="toggle"><input type="checkbox" id="o_geo" checked><span class="slider"></span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>色彩微偏移</strong> — 极细微色调变化</label>
+          <div class="toggle"><input type="checkbox" id="o_color" checked><span class="slider"></span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>非均匀块扰动</strong> — 区域性像素扰动</label>
+          <div class="toggle"><input type="checkbox" id="o_perturb" checked><span class="slider"></span></div>
+        </div>
+      </div>
+
+      <!-- New features -->
+      <div class="opt-group">
+        <div class="opt-group-title">新增功能 <span class="pipe-tag new">NEW</span></div>
+        <div class="opt-row">
+          <label><strong>智能压缩</strong> — Q88-92 深度压缩清洗<span class="pipe-tag new">NEW</span></label>
+          <div class="toggle"><input type="checkbox" id="o_compress" checked><span class="slider"></span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>格式往返洗</strong> — JPG↔PNG 跨格式编码<span class="pipe-tag new">NEW</span></label>
+          <div class="toggle"><input type="checkbox" id="o_fmtWash" checked><span class="slider"></span></div>
+        </div>
+      </div>
+
+      <!-- Pad blend options -->
+      <div class="opt-group">
+        <div class="opt-group-title">垫图融合 <span class="pipe-tag new">NEW</span></div>
+        <div class="opt-row">
+          <label><strong>极低透明度混合</strong> — 实拍信号 1-5% 混入</label>
+          <div class="range-wrap"><input type="range" id="o_blendPad" min="0" max="5" step="0.5" value="2"><span class="rv" id="rv_blendPad">2%</span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>LSB 层替换</strong> — 用实拍图高位替换低位</label>
+          <div class="toggle"><input type="checkbox" id="o_lsbPad" checked><span class="slider"></span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>噪声纹理移植</strong> — 移植相机噪声指纹</label>
+          <div class="toggle"><input type="checkbox" id="o_noisePad"><span class="slider"></span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>噪声移植强度</strong></label>
+          <div class="range-wrap"><input type="range" id="o_noisePadStr" min="0.2" max="3" step="0.2" value="1"><span class="rv" id="rv_noisePadStr">1.0</span></div>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="opt-group">
+        <div class="opt-group-title">输出设置</div>
+        <div class="opt-row">
+          <label><strong>JPEG 重编码轮次</strong></label>
+          <div class="range-wrap"><input type="range" id="o_cycles" min="1" max="4" step="1" value="2"><span class="rv" id="rv_cycles">2</span></div>
+        </div>
+        <div class="opt-row">
+          <label><strong>最终输出质量</strong></label>
+          <div class="range-wrap"><input type="range" id="o_quality" min="0.80" max="0.97" step="0.01" value="0.94"><span class="rv" id="rv_quality">94%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-p" id="bStart" style="display:none">▶ 开始处理</button>
+  </div>
+
+  <div class="status" id="status">
+    <div class="left">
+      <div class="spinner" id="spinner"></div>
+      <span id="stxt">处理中...</span>
+    </div>
+    <span class="prog" id="sprog"></span>
+  </div>
+  <div class="pbar-mini" id="pbar"><div class="fill" id="pfill"></div></div>
+
+  <div class="actions" id="actions">
+    <button class="btn btn-ac" id="bDlAll">📦 批量下载全部</button>
+    <button class="btn btn-s" id="bAdd">+ 继续添加</button>
+    <button class="btn btn-s" id="bClear">清空全部</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <p class="hint">所有处理均在浏览器本地完成，图片不会离开你的设备</p>
+</div>
+
+<script>
+// ============ Helpers ============
+const $=id=>document.getElementById(id);
+const clamp=(v,lo=0,hi=255)=>Math.max(lo,Math.min(hi,Math.round(v)));
+const clampF=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const gaussRand=()=>{const u=Math.random()||1e-10,v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v)};
+const fmtSize=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB';
+
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
+
+function rgbToHsl(r,g,b){
+  r/=255;g/=255;b/=255;
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+  let h,s,l=(mx+mn)/2;
+  if(mx===mn){h=s=0}else{
+    const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);
+    switch(mx){case r:h=((g-b)/d+(g<b?6:0))/6;break;case g:h=((b-r)/d+2)/6;break;case b:h=((r-g)/d+4)/6;break}
+  }
+  return[h,s,l];
+}
+
+function hslToRgb(h,s,l){
+  let r,g,b;
+  if(s===0){r=g=b=l}else{
+    const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;
+    const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<.5)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p};
+    r=f(p,q,h+1/3);g=f(p,q,h);b=f(p,q,h-1/3);
+  }
+  return[Math.round(r*255),Math.round(g*255),Math.round(b*255)];
+}
+
+// ============ State ============
+let items = [];
+let padImages = []; // {file, url, imageData: null}
+let processing = false;
+
+// ============ Read settings from UI ============
+function getSettings(){
+  return {
+    lsb: $('o_lsb').checked,
+    sensorNoise: parseFloat($('o_noise').value),
+    dctStrength: parseFloat($('o_dct').value),
+    hfStrength: parseFloat($('o_hf').value),
+    caStrength: parseFloat($('o_ca').value),
+    geoEnabled: $('o_geo').checked,
+    colorEnabled: $('o_color').checked,
+    colorHueMax: 0.4,
+    colorSatMul: 0.005,
+    colorLumMax: 0.2,
+    perturbEnabled: $('o_perturb').checked,
+    // New features
+    smartCompress: $('o_compress').checked,
+    fmtWash: $('o_fmtWash').checked,
+    // Pad blend
+    padBlendOpacity: parseFloat($('o_blendPad').value) / 100,
+    padLsb: $('o_lsbPad').checked,
+    padNoise: $('o_noisePad').checked,
+    padNoiseStr: parseFloat($('o_noisePadStr').value),
+    // Output
+    jpegCycles: parseInt($('o_cycles').value),
+    jpegQuality: parseFloat($('o_quality').value),
+    // Existing
+    blendOpacity: 0.015,
+  };
+}
+
+// ============ Settings toggle ============
+$('setHead').onclick=()=>{
+  $('setBody').classList.toggle('open');
+  $('setArrow').classList.toggle('open');
+};
+
+// Range display sync
+['noise','dct','hf','ca','cycles'].forEach(k=>{
+  $('o_'+k).oninput=()=>$('rv_'+k).textContent=$('o_'+k).value;
+});
+$('o_quality').oninput=()=>$('rv_quality').textContent=Math.round($('o_quality').value*100)+'%';
+$('o_blendPad').oninput=()=>$('rv_blendPad').textContent=$('o_blendPad').value+'%';
+$('o_noisePadStr').oninput=()=>$('rv_noisePadStr').textContent=parseFloat($('o_noisePadStr').value).toFixed(1);
+
+// ============ Presets ============
+const presetValues = {
+  light: {lsb:true,noise:1.5,dct:1,hf:1,ca:0.6,geo:false,color:false,perturb:false,compress:true,fmtWash:false,cycles:1,quality:0.95},
+  medium: {lsb:true,noise:3,dct:2.5,hf:2.5,ca:1.2,geo:true,color:true,perturb:true,compress:true,fmtWash:true,cycles:2,quality:0.94},
+  heavy: {lsb:true,noise:4.5,dct:4,hf:4,ca:2,geo:true,color:true,perturb:true,compress:true,fmtWash:true,cycles:3,quality:0.90},
+};
+
+document.querySelectorAll('.preset').forEach(el=>{
+  el.onclick=()=>{
+    document.querySelectorAll('.preset').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');
+    const p=presetValues[el.dataset.p];
+    $('o_lsb').checked=p.lsb;
+    $('o_noise').value=p.noise;$('rv_noise').textContent=p.noise;
+    $('o_dct').value=p.dct;$('rv_dct').textContent=p.dct;
+    $('o_hf').value=p.hf;$('rv_hf').textContent=p.hf;
+    $('o_ca').value=p.ca;$('rv_ca').textContent=p.ca;
+    $('o_geo').checked=p.geo;
+    $('o_color').checked=p.color;
+    $('o_perturb').checked=p.perturb;
+    $('o_compress').checked=p.compress;
+    $('o_fmtWash').checked=p.fmtWash;
+    $('o_cycles').value=p.cycles;$('rv_cycles').textContent=p.cycles;
+    $('o_quality').value=p.quality;$('rv_quality').textContent=Math.round(p.quality*100)+'%';
+  };
+});
+
+// ============ Pad image upload ============
+const padZone=$('padZone'), padFi=$('padFi'), padThumbs=$('padThumbs');
+padZone.onclick=()=>padFi.click();
+padZone.ondragover=e=>{e.preventDefault();padZone.classList.add('over')};
+padZone.ondragleave=()=>padZone.classList.remove('over');
+padZone.ondrop=e=>{e.preventDefault();padZone.classList.remove('over');addPadFiles(e.dataTransfer.files)};
+padFi.onchange=()=>{if(padFi.files.length)addPadFiles(padFi.files);padFi.value=''};
+
+function addPadFiles(files){
+  [...files].filter(f=>f.type.startsWith('image/')&&f.size<=30*1024*1024).slice(0,5-padImages.length).forEach(f=>{
+    if(padImages.length>=5)return;
+    const url=URL.createObjectURL(f);
+    padImages.push({file:f,url,imageData:null});
+    renderPadThumbs();
+  });
+}
+
+function renderPadThumbs(){
+  padThumbs.innerHTML='';
+  padImages.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='pad-thumb';
+    d.innerHTML=`<img src="${p.url}"><span class="pt-tag">垫图</span><span class="pt-del" data-i="${i}">✕</span>`;
+    d.querySelector('.pt-del').onclick=e=>{e.stopPropagation();padImages.splice(i,1);renderPadThumbs()};
+    padThumbs.appendChild(d);
+  });
+}
+
+// Preload pad image pixel data
+async function loadPadImageData(padImg, w, h){
+  if(padImg._cache && padImg._cache.w===w && padImg._cache.h===h) return padImg._cache.data;
+  const img = await loadImg(padImg.url);
+  const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+  const cx = cv.getContext('2d',{willReadFrequently:true});
+  cx.drawImage(img, 0, 0, w, h);
+  const data = cx.getImageData(0,0,w,h);
+  padImg._cache = {w, h, data};
+  return data;
+}
+
+// ============ AI image upload ============
+const drop=$('drop'), fi=$('fi'), grid=$('grid');
+drop.onclick=()=>fi.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');addFiles(e.dataTransfer.files)};
+fi.onchange=()=>{if(fi.files.length)addFiles(fi.files);fi.value=''};
+$('bAdd').onclick=()=>fi.click();
+$('bClear').onclick=()=>{items=[];grid.innerHTML='';$('actions').classList.remove('on');$('status').classList.remove('on');$('pbar').classList.remove('on');$('bStart').style.display='none'};
+
+function addFiles(files){
+  const arr=[...files].filter(f=>f.type.startsWith('image/')&&f.size<=30*1024*1024);
+  if(!arr.length)return;
+  arr.forEach(f=>{
+    const id='img_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    const url=URL.createObjectURL(f);
+    items.push({id,file:f,origUrl:url,resultBlob:null,resultUrl:null,status:'wait'});
+    renderItem(items[items.length-1]);
+  });
+  $('actions').classList.add('on');
+  $('bStart').style.display='inline-flex';
+  startProcessing();
+}
+
+function renderItem(item){
+  const el=document.createElement('div');
+  el.className='item';el.id=item.id;
+  el.innerHTML=`
+    <span class="badge badge-wait" id="b_${item.id}">等待中</span>
+    <div class="img-wrap"><img src="${item.origUrl}" id="i_${item.id}"></div>
+    <div class="foot">
+      <span class="fname" title="${item.file.name}">${item.file.name}</span>
+      <span id="a_${item.id}"><span class="size-info">${fmtSize(item.file.size)}</span></span>
+    </div>`;
+  grid.appendChild(el);
+}
+
+function updateBadge(item){
+  const b=document.getElementById('b_'+item.id);if(!b)return;
+  b.className='badge badge-'+item.status;
+  b.textContent={wait:'等待中',ing:'处理中...',done:'完成',err:'失败'}[item.status]||'';
+}
+
+function updateAction(item){
+  const a=document.getElementById('a_'+item.id);
+  if(!a||!item.resultBlob)return;
+  a.innerHTML=`<a class="dl" data-id="${item.id}">下载 ${fmtSize(item.resultBlob.size)}</a>`;
+  a.querySelector('.dl').onclick=()=>dlOne(item);
+  const img=document.getElementById('i_'+item.id);
+  if(img&&item.resultUrl)img.src=item.resultUrl;
+}
+
+function dlOne(item){
+  if(!item.resultBlob)return;
+  const name=item.file.name.replace(/\.[^.]+$/,'')+'_clean.jpg';
+  const a=document.createElement('a');a.href=item.resultUrl;a.download=name;a.click();
+}
+
+$('bDlAll').onclick=async()=>{
+  const done=items.filter(i=>i.resultBlob);
+  if(!done.length)return;
+  for(const item of done){dlOne(item);await sleep(400)}
+};
+
+$('bStart').onclick=()=>startProcessing();
+
+// ============ Processing Queue ============
+async function startProcessing(){
+  if(processing)return;
+  processing=true;
+  $('status').classList.add('on');
+  $('pbar').classList.add('on');
+  $('spinner').style.display='';
+
+  const pending=()=>items.filter(i=>i.status==='wait');
+  const total=items.length;
+
+  while(pending().length){
+    const item=pending()[0];
+    item.status='ing';updateBadge(item);
+    const doneCount=items.filter(i=>i.status==='done').length;
+    $('stxt').textContent=`正在处理 ${doneCount+1}/${total} ...`;
+    $('sprog').textContent=`${doneCount}/${total}`;
+    $('pfill').style.width=((doneCount/total)*100)+'%';
+
+    try{
+      const result=await processImage(item.file);
+      item.resultBlob=result;
+      item.resultUrl=URL.createObjectURL(result);
+      item.status='done';
+    }catch(e){
+      console.error(e);
+      item.status='err';
+    }
+    updateBadge(item);
+    updateAction(item);
+  }
+
+  const doneCount=items.filter(i=>i.status==='done').length;
+  $('stxt').textContent='全部完成';
+  $('sprog').textContent=`${doneCount}/${total}`;
+  $('pfill').style.width='100%';
+  $('spinner').style.display='none';
+  processing=false;
+}
+
+// ============ CORE IMAGE PROCESSING ============
+async function processImage(file){
+  const S = getSettings();
+  const img=await loadImg(URL.createObjectURL(file));
+  const W=img.naturalWidth, H=img.naturalHeight;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const cx=cv.getContext('2d',{willReadFrequently:true});
+
+  // === 1. Draw with micro geometric transform (strips all metadata) ===
+  if(S.geoEnabled){
+    const ang=(Math.random()-.5)*.35*Math.PI/180;
+    const sc=1+(Math.random()-.5)*.004;
+    const tx=(Math.random()-.5)*1, ty=(Math.random()-.5)*1;
+    cx.save();cx.translate(W/2+tx,H/2+ty);cx.rotate(ang);cx.scale(sc,sc);cx.translate(-W/2,-H/2);
+    cx.drawImage(img,0,0,W,H);cx.restore();
+  }else{
+    cx.drawImage(img,0,0,W,H);
+  }
+
+  // === 2. Chromatic Aberration ===
+  if(S.caStrength>0){
+    const s=S.caStrength;
+    const d=cx.getImageData(0,0,W,H);
+    const src=new Uint8ClampedArray(d.data);
+    const cxW=W/2,cxH=H/2,maxR=Math.sqrt(cxW*cxW+cxH*cxH);
+    for(let y=0;y<H;y++){
+      for(let x=0;x<W;x++){
+        const dx=x-cxW,dy=y-cxH;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        const r=dist/maxR;
+        if(r<0.3)continue;
+        const shift=r*r*s*0.7;
+        const nx=dx/Math.max(dist,1),ny=dy/Math.max(dist,1);
+        const rx=clamp(Math.round(x+nx*shift),0,W-1);
+        const ry=clamp(Math.round(y+ny*shift),0,H-1);
+        const bx=clamp(Math.round(x-nx*shift*.6),0,W-1);
+        const by=clamp(Math.round(y-ny*shift*.6),0,H-1);
+        const i=(y*W+x)*4;
+        d.data[i]=src[(ry*W+rx)*4];
+        d.data[i+2]=src[(by*W+bx)*4+2];
+      }
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 3. LSB Randomization ===
+  if(S.lsb){
+    const d=cx.getImageData(0,0,W,H);
+    const px=d.data;
+    for(let i=0;i<px.length;i+=4){
+      px[i]  =(px[i]  &0xFE)|(Math.random()>.5?1:0);
+      px[i+1]=(px[i+1]&0xFE)|(Math.random()>.5?1:0);
+      px[i+2]=(px[i+2]&0xFE)|(Math.random()>.5?1:0);
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 4. Camera Sensor Noise ===
+  if(S.sensorNoise>0){
+    const str=S.sensorNoise;
+    const d=cx.getImageData(0,0,W,H);
+    const px=d.data;
+    for(let i=0;i<px.length;i+=4){
+      const lum=(px[i]*.299+px[i+1]*.587+px[i+2]*.114)/255;
+      const shot=str*.5*Math.sqrt(Math.max(lum,.02));
+      const read=str*.2;
+      const sigma=Math.sqrt(shot*shot+read*read);
+      px[i]=clamp(px[i]+gaussRand()*sigma);
+      px[i+1]=clamp(px[i+1]+gaussRand()*sigma);
+      px[i+2]=clamp(px[i+2]+gaussRand()*sigma);
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 5. Procedural texture blend (sensor color cast + banding) ===
+  {
+    const op=S.blendOpacity;
+    const d=cx.getImageData(0,0,W,H);
+    const bandFreq=.2+Math.random()*.4;
+    const bandPh=Math.random()*6.28;
+    const castR=(Math.random()-.5)*4,castG=(Math.random()-.5)*3,castB=(Math.random()-.5)*4;
+    for(let y=0;y<H;y++){
+      const band=Math.sin(y*bandFreq*.01+bandPh)*.2;
+      for(let x=0;x<W;x++){
+        const i=(y*W+x)*4;
+        d.data[i]=clamp(d.data[i]+(gaussRand()*1.5+band+castR)*op*100);
+        d.data[i+1]=clamp(d.data[i+1]+(gaussRand()*1.2+band+castG)*op*100);
+        d.data[i+2]=clamp(d.data[i+2]+(gaussRand()*1.5+band+castB)*op*100);
+      }
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 6. DCT 8x8 block perturbation ===
+  if(S.dctStrength>0){
+    const str=S.dctStrength;
+    const d=cx.getImageData(0,0,W,H);
+    const BS=8;
+    for(let by=0;by<H-BS;by+=BS){
+      for(let bx=0;bx<W-BS;bx+=BS){
+        const blockBias=gaussRand()*str*.1;
+        for(let dy=0;dy<BS;dy++){
+          for(let dx=0;dx<BS;dx++){
+            const freq=(dx+dy)/14;
+            const mag=str*.22*(.2+freq*.8);
+            const n=gaussRand()*mag+blockBias;
+            const i=((by+dy)*W+(bx+dx))*4;
+            d.data[i]=clamp(d.data[i]+n);
+            d.data[i+1]=clamp(d.data[i+1]+n*.9);
+            d.data[i+2]=clamp(d.data[i+2]+n*1.1);
+          }
+        }
+      }
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 7. High-frequency energy injection ===
+  if(S.hfStrength>0){
+    const str=S.hfStrength;
+    const d=cx.getImageData(0,0,W,H);
+    for(let y=1;y<H-1;y++){
+      for(let x=1;x<W-1;x++){
+        const lv=Math.random()*str*.3;
+        const sign=((x+y)%2===0?1:-1)*(.4+Math.random()*.6);
+        const hf=sign*lv;
+        const i=(y*W+x)*4;
+        d.data[i]=clamp(d.data[i]+hf);
+        d.data[i+1]=clamp(d.data[i+1]+hf*.85);
+        d.data[i+2]=clamp(d.data[i+2]+hf*1.15);
+      }
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 8. Color micro-shift ===
+  if(S.colorEnabled){
+    const d=cx.getImageData(0,0,W,H);
+    const hShift=(Math.random()-.5)*S.colorHueMax;
+    const sMul=1+(Math.random()-.5)*S.colorSatMul;
+    const lShift=(Math.random()-.5)*S.colorLumMax;
+    for(let i=0;i<d.data.length;i+=4){
+      let[h,s,l]=rgbToHsl(d.data[i],d.data[i+1],d.data[i+2]);
+      h=(h+hShift/360+1)%1;
+      s=clampF(s*sMul);
+      l=clampF(l+lShift/255);
+      const[r,g,b]=hslToRgb(h,s,l);
+      d.data[i]=r;d.data[i+1]=g;d.data[i+2]=b;
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 9. Non-uniform block perturbation ===
+  if(S.perturbEnabled){
+    const d=cx.getImageData(0,0,W,H);
+    const RS=64;
+    for(let ry=0;ry<H;ry+=RS){
+      for(let rx=0;rx<W;rx+=RS){
+        const rStr=.8+Math.random()*2;
+        const ew=Math.min(RS,W-rx),eh=Math.min(RS,H-ry);
+        for(let dy=0;dy<eh;dy++){
+          for(let dx=0;dx<ew;dx++){
+            const i=((ry+dy)*W+(rx+dx))*4;
+            d.data[i]=clamp(d.data[i]+gaussRand()*rStr);
+            d.data[i+1]=clamp(d.data[i+1]+gaussRand()*rStr);
+            d.data[i+2]=clamp(d.data[i+2]+gaussRand()*rStr);
+          }
+        }
+      }
+    }
+    cx.putImageData(d,0,0);
+  }
+  await sleep(0);
+
+  // === 10. [NEW] Pad image blending ===
+  if(padImages.length>0){
+    const padImg = padImages[Math.floor(Math.random()*padImages.length)];
+    const padData = await loadPadImageData(padImg, W, H);
+    const padPx = padData.data;
+
+    // 10a. Low-opacity blend
+    if(S.padBlendOpacity>0){
+      const d=cx.getImageData(0,0,W,H);
+      const a=S.padBlendOpacity;
+      const inv=1-a;
+      for(let i=0;i<d.data.length;i+=4){
+        d.data[i]  =clamp(d.data[i]*inv+padPx[i]*a);
+        d.data[i+1]=clamp(d.data[i+1]*inv+padPx[i+1]*a);
+        d.data[i+2]=clamp(d.data[i+2]*inv+padPx[i+2]*a);
+      }
+      cx.putImageData(d,0,0);
+    }
+
+    // 10b. LSB layer replacement
+    if(S.padLsb){
+      const d=cx.getImageData(0,0,W,H);
+      for(let i=0;i<d.data.length;i+=4){
+        d.data[i]  =(d.data[i]  &0xFE)|((padPx[i]  >>7)&1);
+        d.data[i+1]=(d.data[i+1]&0xFE)|((padPx[i+1]>>7)&1);
+        d.data[i+2]=(d.data[i+2]&0xFE)|((padPx[i+2]>>7)&1);
+      }
+      cx.putImageData(d,0,0);
+    }
+
+    // 10c. Noise texture transplant
+    if(S.padNoise){
+      const str=S.padNoiseStr;
+      const d=cx.getImageData(0,0,W,H);
+      // Extract high-frequency from pad image via 3x3 mean blur difference
+      for(let y=1;y<H-1;y++){
+        for(let x=1;x<W-1;x++){
+          const ci=(y*W+x)*4;
+          // 3x3 mean of pad image
+          let mr=0,mg=0,mb=0;
+          for(let dy=-1;dy<=1;dy++){
+            for(let dx=-1;dx<=1;dx++){
+              const ni=((y+dy)*W+(x+dx))*4;
+              mr+=padPx[ni]; mg+=padPx[ni+1]; mb+=padPx[ni+2];
+            }
+          }
+          mr/=9; mg/=9; mb/=9;
+          // High frequency = original - blurred
+          const hfR=(padPx[ci]-mr)*str*0.3;
+          const hfG=(padPx[ci+1]-mg)*str*0.3;
+          const hfB=(padPx[ci+2]-mb)*str*0.3;
+          d.data[ci]  =clamp(d.data[ci]+hfR);
+          d.data[ci+1]=clamp(d.data[ci+1]+hfG);
+          d.data[ci+2]=clamp(d.data[ci+2]+hfB);
+        }
+      }
+      cx.putImageData(d,0,0);
+    }
+  }
+  await sleep(0);
+
+  // === 11. [NEW] Format roundtrip wash (JPG → PNG → JPG) ===
+  if(S.fmtWash){
+    // Step 1: encode current canvas as PNG (lossless, but different encoding structure)
+    const pngBlob = await new Promise(r=>cv.toBlob(r,'image/png'));
+    const pngImg = await loadImg(URL.createObjectURL(pngBlob));
+    // Step 2: redraw from PNG (now pixel grid is re-interpreted)
+    cx.clearRect(0,0,W,H);
+    cx.drawImage(pngImg, 0, 0, W, H);
+    // The next JPEG encode step will complete the roundtrip
+  }
+  await sleep(0);
+
+  // === 12. [NEW] Smart compression (aggressive JPEG re-encode at Q88-92) ===
+  if(S.smartCompress){
+    const q = 0.88 + Math.random()*0.04; // random Q in 88-92 range
+    const blob = await new Promise(r=>cv.toBlob(r,'image/jpeg',q));
+    const cimg = await loadImg(URL.createObjectURL(blob));
+    cx.clearRect(0,0,W,H);
+    cx.drawImage(cimg, 0, 0, W, H);
+  }
+  await sleep(0);
+
+  // === 13. JPEG multi-cycle re-encode (original feature) ===
+  {
+    const cycles=S.jpegCycles;
+    const fq=S.jpegQuality;
+    for(let c=0;c<cycles;c++){
+      const q=c<cycles-1?Math.max(.85,fq-(cycles-1-c)*.03):fq;
+      const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',q));
+      const cimg=await loadImg(URL.createObjectURL(blob));
+      cx.clearRect(0,0,W,H);
+      cx.drawImage(cimg,0,0,W,H);
+    }
+  }
+
+  // === Final export ===
+  return new Promise(r=>cv.toBlob(r,'image/jpeg',S.jpegQuality));
+}
+</script>
+</body>
+</html>
